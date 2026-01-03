@@ -1,0 +1,87 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              Int                  @id @default(autoincrement())
+  email           String               @unique
+  passwordHash    String               @map("password_hash")
+  firstName       String?              @map("first_name")
+  lastName        String?              @map("last_name")
+  phone           String?
+  licenseNumber   String?              @map("license_number")
+  role            String               @default("medlem")
+  avatarPath      String?              @map("avatar_path")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  
+  createdEvents   Event[]              @relation("EventCreator")
+  participants    EventParticipant[]
+  uploadedFiles   DriveFile[]
+  
+  @@map("users")
+}
+
+model Event {
+  id              Int                  @id @default(autoincrement())
+  title           String
+  description     String?
+  date            DateTime?
+  time            String?
+  location        String?
+  price           Float?
+  status          String               @default("ide")
+  driveFolderId   String?              @map("drive_folder_id")
+  createdBy       Int                  @map("created_by")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  
+  creator         User                 @relation("EventCreator", fields: [createdBy], references: [id])
+  participants    EventParticipant[]
+  files           DriveFile[]
+  
+  @@map("events")
+}
+
+model EventParticipant {
+  id              Int                  @id @default(autoincrement())
+  eventId         Int                  @map("event_id")
+  userId          Int                  @map("user_id")
+  licenseNumber   String?              @map("license_number")
+  paid            Boolean              @default(false)
+  paidAmount      Float?               @map("paid_amount")
+  paidDate        DateTime?            @map("paid_date")
+  status          String               @default("tilmeldt")
+  notes           String?
+  createdAt       DateTime             @default(now()) @map("created_at")
+  
+  event           Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([eventId, userId])
+  @@map("event_participants")
+}
+
+model DriveFile {
+  id              Int                  @id @default(autoincrement())
+  entityType      String               @map("entity_type")
+  entityId        Int?                 @map("entity_id")
+  fileType        String               @map("file_type")
+  driveFileId     String               @map("drive_file_id")
+  driveFolderId   String?              @map("drive_folder_id")
+  filename        String
+  uploadedBy      Int                  @map("uploaded_by")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  
+  uploader        User                 @relation(fields: [uploadedBy], references: [id])
+  event           Event?               @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  
+  @@map("drive_files")
+}
